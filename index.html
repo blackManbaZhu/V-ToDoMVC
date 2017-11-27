@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>todo-vue</title>
+		<link rel="stylesheet" href="node_modules/todomvc-common/base.css">
+		<link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
+	</head>
+<body>
+	<div id="todo-vue">
+		<section class="todoapp">
+            <header class="header">
+                <h1>todos</h1>
+                <input v-on:keyup.enter="addTodo" class="new-todo" v-model="todo" placeholder="你的计划和安排?" autofocus>
+            </header>
+            <!-- This section should be hidden by default and shown when there are todos -->
+            <section class="main">
+                <!-- 全选 -->
+                <input  class="toggle-all" type="checkbox">
+                <label for="toggle-all">Mark all as complete</label>
+                <ul class="todo-list"> 
+                	<!--checked 选中  completed:已完成-->
+		            <li class="todo" :class="{completed:item.isChecked,editing:item === editTodos}" v-for="item in todoList">  
+		                <div class="view">  
+		                    <input v-model="item.isChecked"  class="toggle" type="checkbox">  
+		                    <label @dblclick="editorTodo(item)">{{item.title}}</label>   
+		                    <button class="destroy" @click="deleteTodo(item)"></button>  
+		                </div>  
+		                <input @blur="saveEditor(item)" 
+		                	   @keyup.13="saveEditor(item)"
+		                	   @keyup.esc="cancelEditor(item)"
+		                	   v-focus="editTodos === item"
+		                	   class="edit" type="text" v-model="item.title">  
+		            </li>  
+	        	</ul>  
+            </section>
+            <!-- This footer should hidden by default and shown when there are todos -->
+            <footer v-show="todoList.length" class="footer">
+                <!-- This 数组过滤机制 过滤item.isChecked为false的  那么我们需要取反 将为false的放入新数组中-->
+                <span class="todo-count"><strong>{{noCheckedLength}}</strong>条未完成</span>
+                <!-- Remove this if you don't implement routing -->
+                <ul class="filters">  
+		            <li><a href="#/all" >All</a></li>           
+		            <li><a href="#/active" >Active</a></li>  
+		            <li><a href="#/completed">Completed</a></li>  
+	        	</ul>  
+                <!-- Hidden if no completed items are left ↓ -->
+                <button class="clear-completed">Clear completed</button>
+            </footer>
+	    </section>
+		<footer class="info">
+			<p>Double-click to edit a todo</p>
+			<!-- Remove the below line ↓ -->
+			<p>Template by <a href="http://sindresorhus.com">Sindre Sorhus</a></p>
+			<!-- Change this out with your name and url ↓ -->
+			<p>Created by <a href="http://todomvc.com">you</a></p>
+			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+		</footer>
+	</div>
+</body>
+<script src="build/vue.min.js"></script>
+	<script type="text/javascript">
+		//封装一个存储的方法，将当前的数据存放在localstorage 中
+		var localData = {
+			//保存  相当于是一个map对象 有key值和value值 
+			save(key,value){
+				localStorage.setItem(key,JSON.stringify(value));
+			},
+			//获取localstorage 中的数据
+			getData(key){
+				return JSON.parse(localStorage.getItem(key)) || [];
+			}
+		}
+		var todoList  = localData.getData("data-one");
+		var vm        = new Vue ({
+			el:'#todo-vue',
+			data:{
+				todoList:todoList,
+				//在定义一个数据，用于绑定input的value，然后尽量以数据去驱动视图，少的去操作dom，只用于添加一项列表
+				todo:"",
+				editTodos:"",
+				beforeTitle:""
+			},
+			//watch 监听函数  监听的对象是其key值 value为回调函数
+			watch:{
+				//监听的动作为 当todoList发生变化的时候 执行回调函数  浅监控
+//				todoList:function(){
+//					localData.save("data-one",this.todoList);
+//				}
+				//深监控
+				todoList:{
+					handler:function(){
+						localData.save("data-one",this.todoList);
+					},
+					deep:true
+				}
+			},
+			//计算函数
+			computed:{
+				noCheckedLength(){
+					//数组过滤机制 过滤item.isChecked为false的  那么我们需要取反 将为false的放入新数组中
+					return this.todoList.filter(function(item){
+                		return !item.isChecked
+                	}).length
+				}
+			},
+			methods:{
+				//keyup 回车事件添加
+				addTodo(){
+					if(!this.todo){
+						return
+					}
+					this.todoList.push({
+						title:this.todo,
+						isChecked:false
+					})
+					this.todo = "";
+				},
+				//删除
+				deleteTodo(todo){
+					var index = this.todoList.indexOf(todo);
+					this.todoList.splice(index,1);
+				},
+				//编辑
+				editorTodo(todo){
+					//记录编辑之前的任务title 便于取消编辑的时候取出所编辑的值
+					this.beforeTitle = todo.title;
+					//便于确定所编辑的是当前双击的任务li
+					this.editTodos   = todo; 
+				},
+				//输入框失去焦点和按回车  保存编辑
+				saveEditor(todo){
+					this.editTodos   = "";
+				},
+				//取消编辑
+				cancelEditor(todo){
+					//将之前记录下来的title给当前的todo.title
+					todo.title       = this.beforeTitle;
+					//隐藏编辑输入框
+					this.editTodos   = "";
+				}
+			},
+			//自定义指令
+			directives:{
+				"focus":{
+					//钩子函数update el:当前绑定的元素   binding:object 记录当前元素自定义指令中所包含的表达式 指令的名字  value 等 
+					//value的值是true和false true代表你的表达式成立 false则不成立
+					update(el,binding){
+						if(binding.value){
+							el.focus();
+						}
+					}
+				}
+			}
+		})
+	</script>
+</html>
